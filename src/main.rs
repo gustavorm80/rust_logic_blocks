@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use block::{constants::const_bool::BlockConstBool, logic_ports::and_port::AndPort, TExecute};
+use block::{constants::const_bool::BlockConstBool, logic_ports::{and_port::AndPort, or_port::OrPort}, TExecute};
 use terminal::Terminal;
 
 pub mod block;
@@ -115,9 +115,13 @@ fn main() {
     let block_bool = Box::new(BlockConstBool::new(true)) as Box<dyn TExecute>;
     let block_bool2 = Box::new(BlockConstBool::new(true)) as Box<dyn TExecute>;
     let mut block_and = Box::new(AndPort::new()) as Box<dyn TExecute>;
+    let mut block_or = Box::new(OrPort::new()) as Box<dyn TExecute>;
 
     let block_bool_name = block_bool.get_block().get_name().to_string();
 
+    /*=========================================================
+               Connecting ports of AND PORT
+     ==========================================================*/
     match block_and.connect_to_in_terminal_block(0, block_bool.get_block(), 0) {
         Ok(_) => (),
         Err(e) => println!("Erro: {}", e),
@@ -127,10 +131,24 @@ fn main() {
         Ok(_) => (),
         Err(e) => println!("Erro: {}", e),
     }
-    let blocks = Arc::new(Mutex::new(vec![block_bool, block_bool2, block_and]));
+
+    /*=========================================================
+               Connecting ports of OR PORT
+     ==========================================================*/
+     match block_or.connect_to_in_terminal_block(0, block_bool.get_block(), 0) {
+        Ok(_) => (),
+        Err(e) => println!("Erro: {}", e),
+    }
+
+    match block_or.connect_to_in_terminal_block(1, block_bool2.get_block(), 0) {
+        Ok(_) => (),
+        Err(e) => println!("Erro: {}", e),
+    }
+
+
+    let blocks = Arc::new(Mutex::new(vec![block_bool, block_bool2, block_and, block_or]));
 
     let blocks_thread = Arc::clone(&blocks);
-
 
     let bl_thread = thread::spawn(move || loop {
         thread::yield_now();
@@ -148,7 +166,7 @@ fn main() {
 
                 match result {
                     Ok(x) => {
-                        println!("Valor de leitura: {}", x);
+                        println!("Out of \"{}\": {}",block.get_block().get_name(),  x);
                     }
                     Err(err) => println!("Erro: {}", err),
                 };
@@ -163,7 +181,7 @@ fn main() {
         let mut blc_un = blocks.lock().unwrap();
 
         for block in blc_un.iter_mut() {
-            if (*block).get_block().get_name() == block_bool_name {
+            if (*block).get_block().get_name() == block_bool_name ||  (*block).get_block().get_name() == "Or Port" {
                 let in_terminal_result = (*block).get_block().get_out_terminal_by_index(0);
                 match in_terminal_result {
                     Ok(x) => {

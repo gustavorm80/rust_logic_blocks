@@ -1,6 +1,10 @@
 #![allow(dead_code, unused)]
 
-use std::{any::Any, default, sync::{Arc, Mutex}};
+use std::{
+    any::Any,
+    default,
+    sync::{Arc, Mutex},
+};
 
 use uuid::Uuid;
 
@@ -12,9 +16,6 @@ pub trait TTerminal: Send {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub enum TerminalType {
-    Boolean
-}
 
 #[derive(Clone)]
 pub struct Terminal<T: Ord + Copy> {
@@ -22,43 +23,24 @@ pub struct Terminal<T: Ord + Copy> {
     uuid: Uuid,
     connector: Option<Arc<Mutex<dyn TTerminal>>>,
     value: T,
-    default_value: T,
+    last_value: T,
     is_new_value: bool,
-    is_persistent: bool,
-    
 }
 
 impl<T: 'static + Ord + Copy> Terminal<T> {
-    pub fn new(name: String, default_value: T) -> Self {
+    pub fn new(name: String, start_value: T) -> Self {
         Terminal {
             name,
             connector: None,
             uuid: Uuid::new_v4(),
-            value: default_value,
-            default_value,
+            value: start_value,
+            last_value: start_value,
             is_new_value: false,
-            is_persistent: false,
-        }
-    }
-
-    pub fn new_persistent(name: String, default_value: T) -> Self {
-        Terminal {
-            name,
-            connector: None,
-            uuid: Uuid::new_v4(),
-            value: default_value,
-            default_value,
-            is_new_value: false,
-            is_persistent: true,
         }
     }
 
     pub fn new_arc(name: String, default_value: T) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Terminal::new(name, default_value)))
-    }
-
-    pub fn new_persistent_arc(name: String, default_value: T) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Terminal::new_persistent(name, default_value)))
     }
 
     pub fn get_value(&self) -> &T {
@@ -67,17 +49,14 @@ impl<T: 'static + Ord + Copy> Terminal<T> {
 
     pub fn set_value(&mut self, value: T) {
         self.value = value;
-    }   
+    }
 
     pub fn set_connector(&mut self, terminal: Arc<Mutex<dyn TTerminal>>) {
         self.connector = Some(terminal);
     }
 
     pub fn reset(&mut self) {
-        if !self.is_persistent {
-            self.is_new_value = false;
-            self.value = self.default_value;
-        }
+        self.is_new_value = false;
     }
 
     pub fn read_connector(&mut self) {
@@ -89,7 +68,7 @@ impl<T: 'static + Ord + Copy> Terminal<T> {
                     Some(x) => {
                         let val = *x.get_value();
                         self.value = val;
-                    } ,
+                    }
                     None => (),
                 }
             }

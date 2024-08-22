@@ -9,16 +9,16 @@ use crate::{
     terminal::{TTerminal, Terminal},
 };
 
-pub struct AndPort {
+pub struct OrPort {
     block: Block,
     in_a: Arc<Mutex<dyn TTerminal>>,
     in_b: Arc<Mutex<dyn TTerminal>>,
     out_and: Arc<Mutex<dyn TTerminal>>,
 }
 
-impl AndPort {
+impl OrPort {
     pub fn new() -> Self {
-        let mut block = Block::new("And Port");
+        let mut block = Block::new("Or Port");
         let out_and: Arc<Mutex<dyn TTerminal>> =
             Arc::new(Mutex::new(Terminal::new("Out 1".to_string(), false)));
         let in_a: Arc<Mutex<dyn TTerminal>> =
@@ -31,7 +31,7 @@ impl AndPort {
         block.add_in_terminal(Arc::clone(&in_b));
         block.changed = false;
 
-        AndPort {
+        OrPort {
             in_a,
             in_b,
             out_and,
@@ -51,16 +51,16 @@ impl AndPort {
     }
 }
 
-impl TExecute for AndPort {
+impl TExecute for OrPort {
     fn execute(&mut self) -> &bool {
-        let mut result = true;
+        let mut result = false;
 
         for in_terminal in self.block.in_terminals.iter() {
             let mut term = (*in_terminal).lock().unwrap();
 
             let mut downcast = term.as_any_mut().downcast_mut::<Terminal<bool>>();
 
-            result &= match downcast {
+            result |= match downcast {
                 Some(x) => {
                     x.read_connector();
                     *x.get_value()
@@ -123,11 +123,10 @@ impl TExecute for AndPort {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-
 }
 
 
-impl Deref for AndPort {
+impl Deref for OrPort {
     type Target = Block;
 
     fn deref(&self) -> &Block {
@@ -135,7 +134,7 @@ impl Deref for AndPort {
     }
 }
 
-impl DerefMut for AndPort {
+impl DerefMut for OrPort {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.block
     }
