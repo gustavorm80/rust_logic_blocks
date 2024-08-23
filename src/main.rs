@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use block::{constants::const_bool::BlockConstBool, logic_ports::{and_port::AndPort, or_port::OrPort}, TExecute};
+use block::{constants::const_bool::BlockConstBool, logic_ports::{and_port::AndPort, not_port::NotPort, or_port::OrPort}, TExecute};
 use terminal::Terminal;
 
 pub mod block;
@@ -116,6 +116,7 @@ fn main() {
     let block_bool2 = Box::new(BlockConstBool::new(true)) as Box<dyn TExecute>;
     let mut block_and = Box::new(AndPort::new()) as Box<dyn TExecute>;
     let mut block_or = Box::new(OrPort::new()) as Box<dyn TExecute>;
+    let mut block_not  = Box::new(NotPort::new()) as Box<dyn TExecute>;
 
     let block_bool_name = block_bool.get_block().get_name().to_string();
 
@@ -145,8 +146,17 @@ fn main() {
         Err(e) => println!("Erro: {}", e),
     }
 
+     /*=========================================================
+               Connecting ports of NOT PORT
+     ==========================================================*/
+     match block_not.connect_to_in_terminal_block(0, block_bool.get_block(), 0) {
+        Ok(_) => (),
+        Err(e) => println!("Erro: {}", e),
+    }
 
-    let blocks = Arc::new(Mutex::new(vec![block_bool, block_bool2, block_and, block_or]));
+
+
+    let blocks = Arc::new(Mutex::new(vec![block_bool, block_bool2, block_and, block_or, block_not]));
 
     let blocks_thread = Arc::clone(&blocks);
 
