@@ -1,7 +1,7 @@
 
 use std::{any::Any, sync::{Arc, Mutex}};
 
-use crate::terminal::{TTerminal, Terminal};
+use crate::terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::TTerminalOut};
 
 pub mod constants;
 pub mod logic_ports;
@@ -15,7 +15,7 @@ pub trait TExecute: Send {
     fn connect_to_in_terminal(
         &mut self,
         in_index: usize,
-        out_terminal: Arc<Mutex<dyn TTerminal>>,
+        out_terminal: Arc<Mutex<dyn TTerminalOut>>,
     ) -> Result<(), &str>;
 
     fn connect_to_in_terminal_block<'a>(
@@ -37,8 +37,8 @@ pub trait TExecute: Send {
 pub struct Block {
     name: String,
     changed: bool,
-    in_terminals: Vec<Arc<Mutex<dyn TTerminal>>>,
-    out_terminals: Vec<Arc<Mutex<dyn TTerminal>>>,
+    in_terminals: Vec<Arc<Mutex<dyn TTerminalIn>>>,
+    out_terminals: Vec<Arc<Mutex<dyn TTerminalOut>>>,
 }
 
 impl Block {
@@ -51,18 +51,18 @@ impl Block {
         }
     }
 
-    pub fn add_in_terminal(&mut self, terminal: Arc<Mutex<dyn TTerminal>>) {
+    pub fn add_in_terminal(&mut self, terminal: Arc<Mutex<dyn TTerminalIn>>) {
         self.in_terminals.push(terminal);
     }
 
-    pub fn add_out_terminal(&mut self, terminal: Arc<Mutex<dyn TTerminal>>) {
+    pub fn add_out_terminal(&mut self, terminal: Arc<Mutex<dyn TTerminalOut>>) {
         self.out_terminals.push(terminal);
     }
 
     pub fn get_out_terminal_by_index(
         &self,
         out_index: usize,
-    ) -> Result<Arc<Mutex<dyn TTerminal>>, &str> {
+    ) -> Result<Arc<Mutex<dyn TTerminalOut>>, &str> {
         if out_index >= self.out_terminals.len() {
             Err("Index is out of bound")
         } else {
@@ -78,7 +78,7 @@ impl Block {
             Err("Index is out of bound")
         } else {
             let terminal = (*self.out_terminals[out_index]).lock().unwrap();
-            let downcast = terminal.as_any().downcast_ref::<Terminal<T>>();
+            let downcast = terminal.as_any().downcast_ref::<TTerminalOut<T>>();
             match downcast {
                 Some(x) => {
                     let val = *x.get_value();
@@ -92,7 +92,7 @@ impl Block {
     pub fn get_in_terminal_by_index(
         &self,
         in_index: usize,
-    ) -> Result<Arc<Mutex<dyn TTerminal>>, &str> {
+    ) -> Result<Arc<Mutex<dyn TTerminalIn>>, &str> {
         if in_index >= self.in_terminals.len() {
             Err("Index is out of bound")
         } else {
@@ -119,14 +119,14 @@ impl Block {
     pub fn block_connect_to_in_terminal<'a, T: Ord + Copy + 'static>(
         &mut self,
         in_index: usize,
-        out_terminal: Arc<Mutex<dyn TTerminal>>,
+        out_terminal: Arc<Mutex<dyn TTerminalOut>>,
     ) -> Result<(), &str> {
         if in_index >= self.in_terminals.len() {
             Err("Index is out of bound")
         } else {
             let mut in_terminal = (*self.in_terminals[in_index]).lock().unwrap();
 
-            let downcasted = in_terminal.as_any_mut().downcast_mut::<Terminal<T>>();
+            let downcasted = in_terminal.as_any_mut().downcast_mut::<TerminalIn<T>>();
 
             match downcasted {
                 Some(term) => {

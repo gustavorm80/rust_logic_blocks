@@ -5,26 +5,23 @@ use std::{
 };
 
 use crate::{
-    block::{Block, TExecute},
-    terminal::{TTerminal, Terminal},
+    block::{Block, TExecute}, terminal::{terminal_in::TerminalIn, terminal_out::{TTerminalOut, TerminalOut}}
 };
 
 pub struct OrPort {
-    block: Block,
-    in_a: Arc<Mutex<dyn TTerminal>>,
-    in_b: Arc<Mutex<dyn TTerminal>>,
-    out_or: Arc<Mutex<dyn TTerminal>>,
+    block: Block
 }
 
 impl OrPort {
     pub fn new() -> Self {
         let mut block = Block::new("Or Port");
-        let out_or: Arc<Mutex<dyn TTerminal>> =
-            Arc::new(Mutex::new(Terminal::new("Out 1".to_string(), false)));
-        let in_a: Arc<Mutex<dyn TTerminal>> =
-            Arc::new(Mutex::new(Terminal::new("In 1".to_string(), false)));
-        let in_b: Arc<Mutex<dyn TTerminal>> =
-            Arc::new(Mutex::new(Terminal::new("In 2".to_string(), false)));
+        let out_or: Arc<Mutex<TerminalOut<bool>>> =
+            Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
+
+        let in_a: Arc<Mutex<TerminalIn<bool>>> =
+            Arc::new(Mutex::new(TerminalIn::new("In 1".to_string())));
+        let in_b: Arc<Mutex<TerminalIn<bool>>> =
+            Arc::new(Mutex::new(TerminalIn::new("In 2".to_string())));
 
         block.add_out_terminal(Arc::clone(&out_or));
         block.add_in_terminal(Arc::clone(&in_a));
@@ -32,9 +29,6 @@ impl OrPort {
         block.changed = false;
 
         OrPort {
-            in_a,
-            in_b,
-            out_or,
             block,
         }
     }
@@ -58,7 +52,7 @@ impl TExecute for OrPort {
         for in_terminal in self.block.in_terminals.iter() {
             let mut term = (*in_terminal).lock().unwrap();
 
-            let mut downcast = term.as_any_mut().downcast_mut::<Terminal<bool>>();
+            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn<bool>>();
 
             result |= match downcast {
                 Some(x) => {
@@ -70,7 +64,7 @@ impl TExecute for OrPort {
         }
 
         let mut term = (*self.out_or).lock().unwrap();
-        let downcast = term.as_any_mut().downcast_mut::<Terminal<bool>>().unwrap();
+        let downcast = term.as_any_mut().downcast_mut::<TerminalOut<bool>>().unwrap();
 
         let out_val = downcast.get_value();
 
@@ -103,7 +97,7 @@ impl TExecute for OrPort {
     fn connect_to_in_terminal(
         &mut self,
         in_index: usize,
-        out_terminal: Arc<Mutex<dyn TTerminal>>,
+        out_terminal: Arc<Mutex<dyn TTerminalOut>>,
     ) -> Result<(), &str> {
         Ok(())
     }
