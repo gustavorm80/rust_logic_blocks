@@ -1,7 +1,7 @@
 
 use std::{any::Any, sync::{Arc, Mutex}};
 
-use crate::terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::TTerminalOut};
+use crate::terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::{TTerminalOut, TerminalOut}};
 
 pub mod constants;
 pub mod logic_ports;
@@ -78,7 +78,7 @@ impl Block {
             Err("Index is out of bound")
         } else {
             let terminal = (*self.out_terminals[out_index]).lock().unwrap();
-            let downcast = terminal.as_any().downcast_ref::<TTerminalOut<T>>();
+            let downcast = terminal.as_any().downcast_ref::<TerminalOut<T>>();
             match downcast {
                 Some(x) => {
                     let val = *x.get_value();

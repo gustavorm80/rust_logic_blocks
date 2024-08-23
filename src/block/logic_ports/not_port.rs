@@ -8,30 +8,27 @@ use std::{
 
 use crate::{
     block::{Block, TExecute},
-    terminal::{TTerminal, Terminal},
+    terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::{TTerminalOut, TerminalOut}},
 };
 
 pub struct NotPort {
     block: Block,
-    in_a: Arc<Mutex<dyn TTerminal>>,
-    out_not: Arc<Mutex<dyn TTerminal>>,
 }
 
 impl NotPort {
     pub fn new() -> Self {
         let mut block = Block::new("Not Port");
-        let out_not: Arc<Mutex<dyn TTerminal>> =
-            Arc::new(Mutex::new(Terminal::new("Out 1".to_string(), false)));
-        let in_a: Arc<Mutex<dyn TTerminal>> =
-            Arc::new(Mutex::new(Terminal::new("In 1".to_string(), false)));
+        let out_not: Arc<Mutex<dyn TTerminalOut>> =
+            Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
+            
+        let in_a: Arc<Mutex<dyn TTerminalIn>> =
+            Arc::new(Mutex::new(TerminalIn::<bool>::new("In 1".to_string())));
 
-        block.add_out_terminal(Arc::clone(&out_not));
-        block.add_in_terminal(Arc::clone(&in_a));
+        block.add_out_terminal(out_not);
+        block.add_in_terminal(in_a);
         block.changed = false;
 
         NotPort {
-            in_a,
-            out_not,
             block,
         }
     }
@@ -52,19 +49,18 @@ impl TExecute for NotPort {
     fn execute(&mut self) -> &bool {
         let mut result = false;
 
-        let mut term = (*self.in_a).lock().unwrap();
-        let mut downcast = term.as_any_mut().downcast_mut::<Terminal<bool>>();
+        let mut term = (*self.in_terminals[0]).lock().unwrap();
+        let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn<bool>>();
 
         result = match downcast {
             Some(x) => {
-                x.read_connector();
                 !(*x.get_value())
             }
             None => false,
         };
 
-        let mut term = (*self.out_not).lock().unwrap();
-        let downcast = term.as_any_mut().downcast_mut::<Terminal<bool>>().unwrap();
+        let mut term = (*self.out_terminals[0]).lock().unwrap();
+        let downcast = term.as_any_mut().downcast_mut::<TerminalOut<bool>>().unwrap();
 
         let out_val = downcast.get_value();
 
@@ -96,7 +92,7 @@ impl TExecute for NotPort {
     fn connect_to_in_terminal(
         &mut self,
         in_index: usize,
-        out_terminal: Arc<Mutex<dyn TTerminal>>,
+        out_terminal: Arc<Mutex<dyn TTerminalOut>>,
     ) -> Result<(), &str> {
         Ok(())
     }

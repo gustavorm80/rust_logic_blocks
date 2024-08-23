@@ -14,7 +14,6 @@ pub trait TTerminalOut: Send {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-
 #[derive(Clone)]
 pub struct TerminalOut<T: Ord + Copy> {
     name: String,
@@ -44,11 +43,15 @@ impl<T: 'static + Ord + Copy> TerminalOut<T> {
     }
 
     pub fn set_value(&mut self, value: T) {
-        self.value = value;
+        if (self.value != value) {
+            self.value = value;
+            self.is_new_value = true;
+        }
     }
 
     pub fn reset(&mut self) {
         self.is_new_value = false;
+        self.last_value = self.value;
     }
 }
 
