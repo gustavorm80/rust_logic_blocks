@@ -8,11 +8,15 @@ use std::{
 
 use crate::{
     block::{Block, TExecute},
-    terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::{TTerminalOut, TerminalOut}},
+    terminal::{
+        terminal_in::{TTerminalIn, TerminalIn},
+        terminal_out::{TTerminalOut, TerminalOut},
+    },
 };
 
 pub struct NotPort {
     block: Block,
+    out_not: Arc<Mutex<dyn TTerminalOut>>,
 }
 
 impl NotPort {
@@ -20,17 +24,15 @@ impl NotPort {
         let mut block = Block::new("Not Port");
         let out_not: Arc<Mutex<dyn TTerminalOut>> =
             Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
-            
-        let in_a: Arc<Mutex<dyn TTerminalIn>> =
-            Arc::new(Mutex::new(TerminalIn::<bool>::new("In 1".to_string())));
 
-        block.add_out_terminal(out_not);
+        let in_a: Arc<Mutex<dyn TTerminalIn>> =
+            Arc::new(Mutex::new(TerminalIn::new("In 1".to_string())));
+
+        block.add_out_terminal(Arc::clone(&out_not));
         block.add_in_terminal(in_a);
         block.changed = false;
 
-        NotPort {
-            block,
-        }
+        NotPort { block, out_not }
     }
 
     pub fn get_name(&self) -> &str {
@@ -46,30 +48,36 @@ impl NotPort {
 }
 
 impl TExecute for NotPort {
-    fn execute(&mut self) -> &bool {
+    fn execute(&mut self) -> bool {
         let mut result = false;
 
-        let mut term = (*self.in_terminals[0]).lock().unwrap();
-        let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn<bool>>();
+        {
+            let mut term = self.block.in_terminals[0].lock().unwrap();
+            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
 
-        result = match downcast {
-            Some(x) => {
-                !(*x.get_value())
-            }
-            None => false,
-        };
+            result = match downcast {
+                Some(x) => match (*x).get_value::<bool>() {
+                    Some(val) => val,
+                    None => false,
+                },
+                None => false,
+            };
+        }
 
-        let mut term = (*self.out_terminals[0]).lock().unwrap();
-        let downcast = term.as_any_mut().downcast_mut::<TerminalOut<bool>>().unwrap();
+        let mut term = (*self.out_not).lock().unwrap();
+        let mut downcast = term
+            .as_any_mut()
+            .downcast_mut::<TerminalOut<bool>>()
+            .unwrap();
 
         let out_val = downcast.get_value();
 
         if (result != *out_val) {
-            downcast.set_value(result);
-            self.block.changed = true;
+            downcast.set_value(!result);
+            self.block.set_changed(true);
         }
 
-        &self.block.changed
+        self.block.changed
     }
 
     fn is_changed(&self) -> &bool {

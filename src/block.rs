@@ -8,7 +8,7 @@ pub mod logic_ports;
 
 
 pub trait TExecute: Send {
-    fn execute(&mut self) -> &bool;
+    fn execute(&mut self) -> bool;
     fn is_changed(&self) -> &bool;
     fn reset(&mut self);
 
@@ -126,7 +126,7 @@ impl Block {
         } else {
             let mut in_terminal = (*self.in_terminals[in_index]).lock().unwrap();
 
-            let downcasted = in_terminal.as_any_mut().downcast_mut::<TerminalIn<T>>();
+            let downcasted = in_terminal.as_any_mut().downcast_mut::<TerminalIn>();
 
             match downcasted {
                 Some(term) => {

@@ -11,6 +11,7 @@ use crate::{
 
 pub struct AndPort {
     block: Block,
+    out_and: Arc<Mutex<dyn TTerminalOut>>
 }
 
 impl AndPort {
@@ -20,17 +21,18 @@ impl AndPort {
             Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
 
         let in_a: Arc<Mutex<dyn TTerminalIn>> =
-            Arc::new(Mutex::new(TerminalIn::<bool>::new("In 1".to_string())));
+            Arc::new(Mutex::new(TerminalIn::new("In 1".to_string())));
         let in_b: Arc<Mutex<dyn TTerminalIn>> =
-            Arc::new(Mutex::new(TerminalIn::<bool>::new("In 2".to_string())));
+            Arc::new(Mutex::new(TerminalIn::new("In 2".to_string())));
 
-        block.add_out_terminal(out_and);
+        block.add_out_terminal(Arc::clone(&out_and));
         block.add_in_terminal(in_a);
         block.add_in_terminal(in_b);
         block.changed = false;
 
         AndPort {
             block,
+            out_and
         }
     }
 
@@ -47,32 +49,33 @@ impl AndPort {
 }
 
 impl TExecute for AndPort {
-    fn execute(&mut self) -> &bool {
+    fn execute(&mut self) -> bool {
         let mut result = true;
 
         for in_terminal in self.block.in_terminals.iter() {
             let mut term = (*in_terminal).lock().unwrap();
-            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn<bool>>();
+            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
 
             result &= match downcast {
-                Some(x) => {
-                    *x.get_value()
-                }
+                Some(x) => match (*x).get_value::<bool>() {
+                    Some(val) => val,
+                    None => false,
+                },
                 None => false,
             };
         }
 
-        let mut term = (*self.out_terminals[0]).lock().unwrap();
+        let mut term = (*self.out_and).lock().unwrap();
         let downcast = term.as_any_mut().downcast_mut::<TerminalOut<bool>>().unwrap();
 
         let out_val = downcast.get_value();
 
         if (result != *out_val) {
             downcast.set_value(result);
-            self.block.changed = true;
+            self.block.set_changed(true);
         }
 
-        &self.block.changed
+        self.block.changed
     }
 
     fn is_changed(&self) -> &bool {

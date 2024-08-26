@@ -11,19 +11,21 @@ use uuid::Uuid;
 use super::terminal_out::{TTerminalOut, TerminalOut};
 
 pub trait TTerminalIn: Send {
+    fn get_connector_mut(&mut self) -> &Option<Arc<Mutex<dyn TTerminalOut>>>;
+
     fn as_any(&self) -> &dyn Any;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Clone)]
-pub struct TerminalIn<T: Ord + Copy> {
+pub struct TerminalIn {
     name: String,
     uuid: Uuid,
     connector: Option<Arc<Mutex<dyn TTerminalOut>>>,
 }
 
-impl<T: 'static + Ord + Copy> TerminalIn<T> {
+impl TerminalIn {
     pub fn new(name: String) -> Self {
         TerminalIn {
             name,
@@ -36,17 +38,33 @@ impl<T: 'static + Ord + Copy> TerminalIn<T> {
         Arc::new(Mutex::new(TerminalIn::new(name)))
     }
 
-    pub fn get_value(&self) -> &T {
-        // &self.value
-        panic!("Not implemented")
+    pub fn get_value<T: 'static + Ord + Copy>(&self) -> Option<T> {
+        match &self.connector {
+            Some(con) => {
+                let terminal = con.lock().unwrap();
+                let downcast = terminal.as_any().downcast_ref::<TerminalOut<T>>();
+
+                match downcast {
+                    Some(x) => Some(*x.get_value()),
+                    None => None,
+                }
+            },
+            None => None
+        }
     }
 
     pub fn set_connector(&mut self, terminal: Arc<Mutex<dyn TTerminalOut>>) {
         self.connector = Some(terminal);
     }
+
+    
 }
 
-impl<T: 'static + Ord + Copy + Send> TTerminalIn for TerminalIn<T> {
+impl TTerminalIn for TerminalIn {
+
+    fn get_connector_mut(&mut self) -> &Option<Arc<Mutex<dyn TTerminalOut>>> {
+        &self.connector
+    }
 
     fn as_any(&self) -> &dyn Any {
         self

@@ -30,8 +30,8 @@ impl BlockConstBool {
 }
 
 impl TExecute for BlockConstBool {
-    fn execute(&mut self) -> &bool {
-        &self.block.changed
+    fn execute(&mut self) -> bool {
+        self.block.changed
     }
 
     fn is_changed(&self) -> &bool {

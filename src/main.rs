@@ -8,7 +8,7 @@ use std::{
 };
 
 use block::{constants::const_bool::BlockConstBool, logic_ports::{and_port::AndPort, not_port::NotPort, or_port::OrPort}, TExecute};
-use terminal::Terminal;
+use terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::TerminalOut};
 
 pub mod block;
 mod languages;
@@ -170,7 +170,7 @@ fn main() {
 
         for block in blc_un.iter_mut() {
             // println!("Executando bloco {}", (*block).get_block().get_name());
-            if *block.execute() {
+            if block.execute() {
 
                 let result = block.get_block().get_out_terminal_value_by_index::<bool>(0);
 
@@ -191,20 +191,16 @@ fn main() {
         let mut blc_un = blocks.lock().unwrap();
 
         for block in blc_un.iter_mut() {
-            if (*block).get_block().get_name() == block_bool_name ||  (*block).get_block().get_name() == "Or Port" {
-                let in_terminal_result = (*block).get_block().get_out_terminal_by_index(0);
-                match in_terminal_result {
-                    Ok(x) => {
-                        let mut in_term = (*x).lock().unwrap();
-                        let downcast = in_term.as_any_mut().downcast_mut::<Terminal<bool>>();
-                        match downcast {
-                            Some(t) => {
-                                t.set_value(!(*t.get_value()));
-                            }
-                            None => (),
+            if (*block).get_block().get_name() == block_bool_name {
+                let out_terminal_result = (*block).get_block().get_out_terminal_by_index(0);
+                match out_terminal_result {
+                    Ok(out) => {
+                        let mut out_lock = out.lock().unwrap();
+                        if let Some(out_dc) = out_lock.as_any_mut().downcast_mut::<TerminalOut<bool>>(){
+                            (*out_dc).set_value(!*out_dc.get_value());
                         }
-                    }
-                    Err(_) =>  println!("Erro"),
+                    },
+                    Err(_) => (),
                 }
             }
         }

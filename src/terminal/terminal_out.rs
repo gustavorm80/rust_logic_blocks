@@ -10,8 +10,13 @@ use uuid::Uuid;
 
 pub trait TTerminalOut: Send {
     fn reset(&mut self);
+
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+pub trait TReaderOut<T> {
+    fn read(&self) -> T;
 }
 
 #[derive(Clone)]
@@ -66,5 +71,11 @@ impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+}
+
+impl<T: 'static + Ord + Copy + Send> TReaderOut<T> for TerminalOut<T> {
+    fn read(&self) -> T {
+        *self.get_value()
     }
 }

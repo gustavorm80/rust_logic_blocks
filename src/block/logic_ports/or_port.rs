@@ -1,15 +1,22 @@
 #![allow(dead_code, unused)]
 
 use std::{
-    any::Any, ops::{Deref, DerefMut}, sync::{Arc, Mutex}
+    any::Any,
+    ops::{Deref, DerefMut},
+    sync::{Arc, Mutex},
 };
 
 use crate::{
-    block::{Block, TExecute}, terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::{TTerminalOut, TerminalOut}}
+    block::{Block, TExecute},
+    terminal::{
+        terminal_in::{TTerminalIn, TerminalIn},
+        terminal_out::{TTerminalOut, TerminalOut},
+    },
 };
 
 pub struct OrPort {
-    block: Block
+    block: Block,
+    out_or: Arc<Mutex<dyn TTerminalOut>>,
 }
 
 impl OrPort {
@@ -19,18 +26,16 @@ impl OrPort {
             Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
 
         let in_a: Arc<Mutex<dyn TTerminalIn>> =
-            Arc::new(Mutex::new(TerminalIn::<bool>::new("In 1".to_string())));
+            Arc::new(Mutex::new(TerminalIn::new("In 1".to_string())));
         let in_b: Arc<Mutex<dyn TTerminalIn>> =
-            Arc::new(Mutex::new(TerminalIn::<bool>::new("In 2".to_string())));
+            Arc::new(Mutex::new(TerminalIn::new("In 2".to_string())));
 
-        block.add_out_terminal(out_or);
+        block.add_out_terminal(Arc::clone(&out_or));
         block.add_in_terminal(in_a);
         block.add_in_terminal(in_b);
         block.changed = false;
 
-        OrPort {
-            block,
-        }
+        OrPort { block, out_or }
     }
 
     pub fn get_name(&self) -> &str {
@@ -46,33 +51,39 @@ impl OrPort {
 }
 
 impl TExecute for OrPort {
-    fn execute(&mut self) -> &bool {
+    fn execute(&mut self) -> bool {
         let mut result = false;
 
         for in_terminal in self.block.in_terminals.iter() {
             let mut term = (*in_terminal).lock().unwrap();
 
-            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn<bool>>();
+            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
 
             result |= match downcast {
                 Some(x) => {
-                    *x.get_value()
-                }
+                    match (*x).get_value::<bool>() {
+                        Some(val) => val,
+                        None => false
+                    }
+                },
                 None => false,
             };
         }
 
-        let mut term = (*self.out_terminals[0]).lock().unwrap();
-        let downcast = term.as_any_mut().downcast_mut::<TerminalOut<bool>>().unwrap();
+        let mut term = (*self.out_or).lock().unwrap();
+        let downcast = term
+            .as_any_mut()
+            .downcast_mut::<TerminalOut<bool>>()
+            .unwrap();
 
         let out_val = downcast.get_value();
 
         if (result != *out_val) {
             downcast.set_value(result);
-            self.block.changed = true;
+            self.block.set_changed(true);
         }
 
-        &self.block.changed
+        self.block.changed
     }
 
     fn is_changed(&self) -> &bool {
@@ -92,7 +103,6 @@ impl TExecute for OrPort {
         self.block_connect_to_in_terminal_block::<bool>(in_index, from_block, from_out_index)
     }
 
-    
     fn connect_to_in_terminal(
         &mut self,
         in_index: usize,
@@ -117,7 +127,6 @@ impl TExecute for OrPort {
         self
     }
 }
-
 
 impl Deref for OrPort {
     type Target = Block;
