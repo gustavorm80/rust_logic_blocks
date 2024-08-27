@@ -2,204 +2,273 @@ use std::{
     borrow::BorrowMut,
     fmt,
     io::{self, Read, Write},
+    ops::DerefMut,
     sync::{Arc, Mutex},
     thread::{self, Scope},
     time::Duration,
 };
 
-use block::{constants::const_bool::BlockConstBool, logic_ports::{and_port::AndPort, not_port::NotPort, or_port::OrPort}, TExecute};
-use terminal::{terminal_in::{TTerminalIn, TerminalIn}, terminal_out::TerminalOut};
+use block::{
+    constants::const_bool::BlockConstBool,
+    logic_ports::{and_port::AndPort, nor_port::NOrPort, not_port::NotPort, or_port::OrPort},
+    TBlock, TExecute,
+};
+use terminal::{
+    terminal_in::{TTerminalIn, TerminalIn},
+    terminal_out::TerminalOut,
+};
 
 pub mod block;
 mod languages;
 mod learn;
 pub mod terminal;
 
-// trait TConta: Send {
-//     fn add(&mut self, amount: i32);
-//     fn sub(&mut self, amount: i32);
+fn pass_blocks(blocks: &Arc<Mutex<Vec<Box<dyn TExecute>>>>) {
+    let mut blc_un = (*blocks).lock().unwrap();
 
-//     fn get_owner_mut(&mut self) -> &mut Owner;
-//     fn get_owner(&self) -> &Owner;
+    for block in blc_un.iter_mut() {
+        if block.execute() {
+            let result = block.get_block().get_out_terminal_value_by_index::<bool>(0);
 
-//     fn get_total(&self) -> &i32;
-// }
+            // if block.get_block().get_name() != "Not Port" {
+            //     match result {
+            //         Ok(x) => {
+            //             println!("Out of \"{}\": {}", block.get_block().get_name(), x);
+            //         }
+            //         Err(err) => println!("Erro: {}", err),
+            //     };
+            // }
+        } else {
+        }
+    }
+}
 
-// #[derive(Debug)]
-// struct Owner {
-//     name: String,
-//     conta: Option<Arc<Mutex<dyn TConta>>>,
-// }
+fn print_blocks(blocks: &Arc<Mutex<Vec<Box<dyn TExecute>>>>) {
+    let mut blc_un = (*blocks).lock().unwrap();
 
-// #[derive(Debug)]
-// struct Conta {
-//     pub total: i32,
-//     pub owner: Owner,
-// }
+    for block in blc_un.iter_mut() {
+        println!("{}", block.get_block().get_name());
+        for i in 0..block.get_block().get_in_terminals_size() {
+            let mut value: bool = false;
 
-// impl fmt::Debug for dyn TConta {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(
-//             f,
-//             "Owner {} has a total of {} in account",
-//             (*self).get_owner().name,
-//             self.get_total()
-//         )
-//     }
-// }
+            let t = block.get_block().get_in_terminal_by_index(i);
+            if let Ok(x) = t {
+                let t = x.lock().unwrap();
+                let v = t.as_any().downcast_ref::<TerminalIn>();
+                if let Some(t) = v {
+                    let v = (*t).get_value::<bool>();
+                    if let Some(t) = v {
+                        value = t;
+                    }
+                }
+            }
 
-// impl TConta for Conta {
-//     fn add(&mut self, amount: i32) {
-//         self.total += amount;
-//     }
+            println!("I{} - {}", i, value);
+        }
 
-//     fn sub(&mut self, amount: i32) {
-//         self.total -= amount;
-//     }
+        for i in 0..block.get_block().get_out_terminals_size() {
+            let mut value: bool = false;
 
-//     fn get_owner(&self) -> &Owner {
-//         &self.owner
-//     }
+            let t = block.get_block().get_out_terminal_by_index(i);
+            if let Ok(x) = t {
+                let t = x.lock().unwrap();
+                let v = t.as_any().downcast_ref::<TerminalOut<bool>>();
+                if let Some(t) = v {
+                    value = (*t).get_value();
+                }
+            }
 
-//     fn get_owner_mut(&mut self) -> &mut Owner {
-//         &mut self.owner
-//     }
+            println!("O{} - {}", i, value);
+        }
+        println!("");
+    }
+}
 
-//     fn get_total(&self) -> &i32 {
-//         &self.total
-//     }
-// }
+fn alternate(blocks: &Arc<Mutex<Vec<Box<dyn TExecute>>>>) {
+    let mut blc_un = blocks.lock().unwrap();
 
-// fn main() {
-//     let mut conta: Arc<Mutex<dyn TConta>> = Arc::new(Mutex::new(Conta {
-//         total: 0,
-//         owner: Owner {
-//             name: "Gustavo".to_string(),
-//             conta: None,
-//         },
-//     }));
+    for block in blc_un.iter_mut() {
+        if (*block).get_block().get_name() == "D" {
+            let out_terminal_result = (*block).get_block().get_out_terminal_by_index(0);
+            match out_terminal_result {
+                Ok(out) => {
+                    let mut out_lock = out.lock().unwrap();
+                    if let Some(out_dc) = out_lock.as_any_mut().downcast_mut::<TerminalOut<bool>>()
+                    {
+                        (*out_dc).set_value(!out_dc.get_value());
+                    }
+                }
+                Err(_) => (),
+            }
+        }
+    }
+    println!("============================================================");
+}
 
-//     let t = conta.lock();
-//     t.unwrap().get_owner_mut().conta = Some(Arc::clone(&conta));
+fn print_out_by_name(blocks: &Arc<Mutex<Vec<Box<dyn TExecute>>>>, name: String) {
+    let mut blc_un = blocks.lock().unwrap();
 
-//     let t = Arc::clone(&conta);
-//     let mt = thread::spawn(move || {
-//         for _i in 0..10000 {
-//             let value = t.lock();
-//             let mut m = value.unwrap();
-//             m.add(100);
-//             println!("Thread soma {}", m.get_total());
-//         }
-//     });
-
-//     let t2 = Arc::clone(&conta);
-//     let mt2 = thread::spawn(move || {
-//         for _i in 0..10000 {
-//             let value = t2.lock();
-//             let mut m = value.unwrap();
-//             m.sub(100);
-//             println!("Thread subtração {}", m.get_total());
-//         }
-//     });
-
-//     mt.join().unwrap();
-//     mt2.join().unwrap();
-
-//     println!(
-//         "Valor total: {}",
-//         conta.lock().as_ref().unwrap().get_total()
-//     );
-// }
+    for block in blc_un.iter_mut() {
+        if (*block).get_block().get_name() == name {
+            let out_terminal_result = (*block).get_block().get_out_terminal_by_index(0);
+            match out_terminal_result {
+                Ok(out) => {
+                    let mut out_lock = out.lock().unwrap();
+                    if let Some(out_dc) = out_lock.as_any_mut().downcast_mut::<TerminalOut<bool>>()
+                    {
+                        if out_dc.is_new_value() {
+                            println!("{}: {}", name, out_dc.get_value());
+                        }
+                    }
+                }
+                Err(_) => (),
+            }
+        }
+    }
+}
 
 fn main() {
-    let block_bool = Box::new(BlockConstBool::new(true)) as Box<dyn TExecute>;
-    let block_bool2 = Box::new(BlockConstBool::new(true)) as Box<dyn TExecute>;
-    let mut block_and = Box::new(AndPort::new()) as Box<dyn TExecute>;
-    let mut block_or = Box::new(OrPort::new()) as Box<dyn TExecute>;
-    let mut block_not  = Box::new(NotPort::new()) as Box<dyn TExecute>;
+    let mut block_bool_d = Box::new(BlockConstBool::new(false));
+    let mut block_bool_e = Box::new(BlockConstBool::new(true));
 
-    let block_bool_name = block_bool.get_block().get_name().to_string();
+    let mut block_not = Box::new(NotPort::new());
 
-    /*=========================================================
-               Connecting ports of AND PORT
-     ==========================================================*/
-    match block_and.connect_to_in_terminal_block(0, block_bool.get_block(), 0) {
-        Ok(_) => (),
-        Err(e) => println!("Erro: {}", e),
-    }
+    let mut block_and = Box::new(AndPort::new());
+    let mut block_and2 = Box::new(AndPort::new());
 
-    match block_and.connect_to_in_terminal_block(1, block_bool2.get_block(), 0) {
-        Ok(_) => (),
-        Err(e) => println!("Erro: {}", e),
-    }
+    let mut block_nor = Box::new(NOrPort::new());
+    let mut block_nor2 = Box::new(NOrPort::new());
 
     /*=========================================================
-               Connecting ports of OR PORT
-     ==========================================================*/
-     match block_or.connect_to_in_terminal_block(0, block_bool.get_block(), 0) {
-        Ok(_) => (),
-        Err(e) => println!("Erro: {}", e),
+              Connecting port const D
+    ==========================================================*/
+    if let Err(e) = block_bool_d.connect_out_to_in::<bool>(0, block_not.get_block_mut(), 0) {
+        println!("Erro D to Not: {}", e)
     }
 
-    match block_or.connect_to_in_terminal_block(1, block_bool2.get_block(), 0) {
-        Ok(_) => (),
-        Err(e) => println!("Erro: {}", e),
+    if let Err(e) = block_bool_d.connect_out_to_in::<bool>(0, block_and2.get_block_mut(), 1) {
+        println!("Erro D to AND 2: {}", e)
     }
 
-     /*=========================================================
-               Connecting ports of NOT PORT
-     ==========================================================*/
-     match block_not.connect_to_in_terminal_block(0, block_bool.get_block(), 0) {
-        Ok(_) => (),
-        Err(e) => println!("Erro: {}", e),
+    block_bool_d.set_name("D");
+
+    /*=========================================================
+                Connecting port NOT
+    ==========================================================*/
+    if let Err(e) = block_not.connect_out_to_in::<bool>(0, block_and.get_block_mut(), 0) {
+        println!("Erro NOT to AND: {}", e)
     }
 
+    /*=========================================================
+                Connecting port const E
+    ==========================================================*/
+    if let Err(e) = block_bool_e.connect_out_to_in::<bool>(0, block_and.get_block_mut(), 1) {
+        println!("Erro E to AND: {}", e)
+    }
 
+    if let Err(e) = block_bool_e.connect_out_to_in::<bool>(0, block_and2.get_block_mut(), 0) {
+        println!("Erro E to AND 2: {}", e)
+    }
 
-    let blocks = Arc::new(Mutex::new(vec![block_bool, block_bool2, block_and, block_or, block_not]));
+    block_bool_e.get_block_mut().set_name("E");
+
+    /*=========================================================
+              Connecting port AND
+    ==========================================================*/
+    if let Err(e) = block_and.connect_out_to_in::<bool>(0, block_nor.get_block_mut(), 0) {
+        println!("Erro AND to NOR: {}", e)
+    }
+
+    /*=========================================================
+              Connecting port AND 2
+    ==========================================================*/
+    if let Err(e) = block_and2.connect_out_to_in::<bool>(0, block_nor2.get_block_mut(), 1) {
+        println!("Erro AND 2 to NOR 2: {}", e)
+    }
+
+    block_and2.get_block_mut().set_name("AND 2");
+
+    /*=========================================================
+                Connecting port NOR
+    ==========================================================*/
+    if let Err(e) = block_nor.connect_out_to_in::<bool>(0, block_nor2.get_block_mut(), 0) {
+        println!("Erro NOR to NOR 2: {}", e)
+    }
+
+    block_nor.set_name("Q");
+
+    /*=========================================================
+                Connecting port NOR 2
+    ==========================================================*/
+    if let Err(e) = block_nor2.connect_out_to_in::<bool>(0, block_nor.get_block_mut(), 1) {
+        println!("Erro NOR 2 to NOR: {}", e)
+    }
+
+    block_nor2.set_name("!Q");
+
+    let blocks: Arc<Mutex<Vec<Box<dyn TExecute>>>> = Arc::new(Mutex::new(vec![
+        block_bool_d,
+        block_bool_e,
+        block_and,
+        block_and2,
+        block_nor,
+        block_nor2,
+        block_not,
+    ]));
 
     let blocks_thread = Arc::clone(&blocks);
 
     let bl_thread = thread::spawn(move || loop {
         thread::yield_now();
-        let mut blc_un = blocks_thread.lock().unwrap();
 
-        for block in blc_un.iter_mut() {
-            (*block).reset();
-        }
+        for _number in 0..100 {
+            let mut blc_un = blocks_thread.lock().unwrap();
 
-        for block in blc_un.iter_mut() {
-            // println!("Executando bloco {}", (*block).get_block().get_name());
-            if block.execute() {
+            if _number == 0 {
+                for block in blc_un.iter_mut() {
+                    (*block).get_block_mut().reset();
+                }
+            }
 
-                let result = block.get_block().get_out_terminal_value_by_index::<bool>(0);
+            for block in blc_un.iter_mut() {
+                (*block).get_block_mut().new_pass();
+            }
 
-                match result {
-                    Ok(x) => {
-                        println!("Out of \"{}\": {}",block.get_block().get_name(),  x);
-                    }
-                    Err(err) => println!("Erro: {}", err),
-                };
-            } else {
+            let mut executed = false;
+            for block in blc_un.iter_mut() {
+                if block.execute() {
+                    executed = true;
+                } 
+            }
+
+            if !executed {
+                break;
             }
         }
+
+        print_out_by_name(&blocks_thread, "Q".to_string());
+        // print_out_by_name(&blocks_thread, "!Q".to_string());
     });
 
-    thread::spawn(move || loop{
+    thread::spawn(move || loop {
         thread::yield_now();
         thread::sleep(Duration::from_secs(1));
         let mut blc_un = blocks.lock().unwrap();
 
         for block in blc_un.iter_mut() {
-            if (*block).get_block().get_name() == block_bool_name {
+            if (*block).get_block().get_name() == "D" {
                 let out_terminal_result = (*block).get_block().get_out_terminal_by_index(0);
                 match out_terminal_result {
                     Ok(out) => {
                         let mut out_lock = out.lock().unwrap();
-                        if let Some(out_dc) = out_lock.as_any_mut().downcast_mut::<TerminalOut<bool>>(){
-                            (*out_dc).set_value(!*out_dc.get_value());
+                        if let Some(out_dc) =
+                            out_lock.as_any_mut().downcast_mut::<TerminalOut<bool>>()
+                        {
+                            (*out_dc).set_value(!out_dc.get_value());
+
+                            // println!("Valor Setado: {}", out_dc.get_value());
                         }
-                    },
+                    }
                     Err(_) => (),
                 }
             }

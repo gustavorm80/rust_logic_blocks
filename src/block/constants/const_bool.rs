@@ -1,6 +1,6 @@
 #![allow(dead_code, unused)]
 
-use std::{any::Any, ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
+use std::{any::Any, default, ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
 
 use crate::{block::{Block, TExecute}, terminal::terminal_out::{TTerminalOut, TerminalOut}, };
 
@@ -11,12 +11,15 @@ pub struct BlockConstBool {
 }
 
 impl BlockConstBool {
-    pub fn new(default_value: bool) -> Self {
+    pub fn new(start_value: bool) -> Self {
         let mut block = Block::new("Constant Bool");
-        let out_const:Arc<Mutex<dyn TTerminalOut>> = Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), default_value)));
+        let terminal = TerminalOut::new("Out 1".to_string(), start_value);
+
+        let out_const:Arc<Mutex<dyn TTerminalOut>> = Arc::new(Mutex::new(terminal));
         
         block.add_out_terminal(Arc::clone(&out_const));
         block.changed = false;
+        
 
         BlockConstBool {
             out_const,
@@ -38,19 +41,6 @@ impl TExecute for BlockConstBool {
         &self.block.changed
     }
 
-    fn reset(&mut self) {
-        self.block.changed = false;
-    }
-    
-    fn connect_to_in_terminal_block<'a>(
-        &'a mut self,
-        in_index: usize,
-        from_block: &'a Block,
-        from_out_index: usize,
-    ) -> Result<(), &str> {
-        Ok(())
-    }
-
     fn get_block(&self) -> &Block {
         &self.block
     }
@@ -67,13 +57,6 @@ impl TExecute for BlockConstBool {
         self
     }
     
-    fn connect_to_in_terminal(
-        &mut self,
-        in_index: usize,
-        out_terminal: Arc<Mutex<dyn crate::terminal::terminal_out::TTerminalOut>>,
-    ) -> Result<(), &str> {
-        Ok(())
-    }
 }
 
 impl Deref for BlockConstBool {

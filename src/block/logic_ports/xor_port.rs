@@ -14,26 +14,26 @@ use crate::{
     },
 };
 
-pub struct AndPort {
+pub struct XOrPort {
     block: Block,
-    out_and: Arc<Mutex<dyn TTerminalOut>>,
+    out_xor: Arc<Mutex<dyn TTerminalOut>>,
 }
 
-impl AndPort {
+impl XOrPort {
     pub fn new() -> Self {
-        let mut block = Block::new("And Port");
-        let out_and: Arc<Mutex<dyn TTerminalOut>> =
+        let mut block = Block::new("Or Port");
+        let out_xor: Arc<Mutex<dyn TTerminalOut>> =
             Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
 
         let in_a: Arc<Mutex<dyn TTerminalIn>> = TerminalIn::new("In 1".to_string());
         let in_b: Arc<Mutex<dyn TTerminalIn>> = TerminalIn::new("In 2".to_string());
 
-        block.add_out_terminal(Arc::clone(&out_and));
+        block.add_out_terminal(Arc::clone(&out_xor));
         block.add_in_terminal(in_a);
         block.add_in_terminal(in_b);
         block.changed = false;
 
-        AndPort { block, out_and }
+        XOrPort { block, out_xor }
     }
 
     pub fn get_name(&self) -> &str {
@@ -48,24 +48,39 @@ impl AndPort {
     }
 }
 
-impl TExecute for AndPort {
+impl TExecute for XOrPort {
     fn execute(&mut self) -> bool {
-        let mut result = true;
+        let mut result = false;
+        let mut first = true;
 
         for in_terminal in self.block.in_terminals.iter() {
             let mut term = (*in_terminal).lock().unwrap();
+
             let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
 
-            result &= match downcast {
-                Some(x) => match (*x).get_value::<bool>() {
-                    Some(val) => val,
+            if first {
+                result = match downcast {
+                    Some(x) => match (*x).get_value::<bool>() {
+                        Some(val) => val,
+                        None => false,
+                    },
                     None => false,
-                },
-                None => false,
-            };
+                };
+                first = false;
+            } else {
+                result ^= match downcast {
+                    Some(x) => match (*x).get_value::<bool>() {
+                        Some(val) => val,
+                        None => false,
+                    },
+                    None => false,
+                };
+            }
+
+
         }
 
-        let mut term = (*self.out_and).lock().unwrap();
+        let mut term = (*self.out_xor).lock().unwrap();
         let downcast = term
             .as_any_mut()
             .downcast_mut::<TerminalOut<bool>>()
@@ -102,7 +117,7 @@ impl TExecute for AndPort {
     }
 }
 
-impl Deref for AndPort {
+impl Deref for XOrPort {
     type Target = Block;
 
     fn deref(&self) -> &Block {
@@ -110,7 +125,7 @@ impl Deref for AndPort {
     }
 }
 
-impl DerefMut for AndPort {
+impl DerefMut for XOrPort {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.block
     }

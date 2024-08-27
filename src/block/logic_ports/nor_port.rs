@@ -14,26 +14,26 @@ use crate::{
     },
 };
 
-pub struct AndPort {
+pub struct NOrPort {
     block: Block,
-    out_and: Arc<Mutex<dyn TTerminalOut>>,
+    out_nor: Arc<Mutex<dyn TTerminalOut>>,
 }
 
-impl AndPort {
+impl NOrPort {
     pub fn new() -> Self {
-        let mut block = Block::new("And Port");
-        let out_and: Arc<Mutex<dyn TTerminalOut>> =
+        let mut block = Block::new("Or Port");
+        let out_nor: Arc<Mutex<dyn TTerminalOut>> =
             Arc::new(Mutex::new(TerminalOut::new("Out 1".to_string(), false)));
 
         let in_a: Arc<Mutex<dyn TTerminalIn>> = TerminalIn::new("In 1".to_string());
         let in_b: Arc<Mutex<dyn TTerminalIn>> = TerminalIn::new("In 2".to_string());
 
-        block.add_out_terminal(Arc::clone(&out_and));
+        block.add_out_terminal(Arc::clone(&out_nor));
         block.add_in_terminal(in_a);
         block.add_in_terminal(in_b);
         block.changed = false;
 
-        AndPort { block, out_and }
+        NOrPort { block, out_nor }
     }
 
     pub fn get_name(&self) -> &str {
@@ -48,15 +48,16 @@ impl AndPort {
     }
 }
 
-impl TExecute for AndPort {
+impl TExecute for NOrPort {
     fn execute(&mut self) -> bool {
-        let mut result = true;
+        let mut result = false;
 
         for in_terminal in self.block.in_terminals.iter() {
             let mut term = (*in_terminal).lock().unwrap();
+
             let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
 
-            result &= match downcast {
+            result |= match downcast {
                 Some(x) => match (*x).get_value::<bool>() {
                     Some(val) => val,
                     None => false,
@@ -65,13 +66,15 @@ impl TExecute for AndPort {
             };
         }
 
-        let mut term = (*self.out_and).lock().unwrap();
+        let mut term = (*self.out_nor).lock().unwrap();
         let downcast = term
             .as_any_mut()
             .downcast_mut::<TerminalOut<bool>>()
             .unwrap();
 
         let out_val = downcast.get_value();
+
+        result = !result;
 
         if (result != out_val) {
             downcast.set_value(result);
@@ -102,7 +105,7 @@ impl TExecute for AndPort {
     }
 }
 
-impl Deref for AndPort {
+impl Deref for NOrPort {
     type Target = Block;
 
     fn deref(&self) -> &Block {
@@ -110,7 +113,7 @@ impl Deref for AndPort {
     }
 }
 
-impl DerefMut for AndPort {
+impl DerefMut for NOrPort {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.block
     }

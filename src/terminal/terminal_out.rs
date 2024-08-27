@@ -43,8 +43,8 @@ impl<T: 'static + Ord + Copy> TerminalOut<T> {
         Arc::new(Mutex::new(TerminalOut::new(name, default_value)))
     }
 
-    pub fn get_value(&self) -> &T {
-        &self.value
+    pub fn get_value(&self) -> T {
+        self.value
     }
 
     pub fn set_value(&mut self, value: T) {
@@ -52,6 +52,10 @@ impl<T: 'static + Ord + Copy> TerminalOut<T> {
             self.value = value;
             self.is_new_value = true;
         }
+    }
+
+    pub fn is_new_value(&self) -> bool {
+        self.is_new_value
     }
 
     pub fn reset(&mut self) {
@@ -76,6 +80,6 @@ impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
 
 impl<T: 'static + Ord + Copy + Send> TReaderOut<T> for TerminalOut<T> {
     fn read(&self) -> T {
-        *self.get_value()
+        self.get_value()
     }
 }

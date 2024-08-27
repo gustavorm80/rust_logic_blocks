@@ -3,6 +3,7 @@
 use std::{
     any::Any,
     default,
+    rc::{Rc, Weak},
     sync::{Arc, Mutex},
 };
 
@@ -18,6 +19,8 @@ pub trait TTerminalIn: Send {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+type TerminalInRef = Arc<Mutex<TerminalIn>>;
+
 #[derive(Clone)]
 pub struct TerminalIn {
     name: String,
@@ -26,16 +29,20 @@ pub struct TerminalIn {
 }
 
 impl TerminalIn {
-    pub fn new(name: String) -> Self {
-        TerminalIn {
+    // pub fn new(name: String) -> _TerminalIn {
+    //     _TerminalIn {
+    //         name,
+    //         connector: None,
+    //         uuid: Uuid::new_v4(),
+    //     }
+    // }
+
+    pub fn new(name: String) -> TerminalInRef {
+        Arc::new(Mutex::new(TerminalIn {
             name,
             connector: None,
             uuid: Uuid::new_v4(),
-        }
-    }
-
-    pub fn new_arc(name: String) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(TerminalIn::new(name)))
+        }))
     }
 
     pub fn get_value<T: 'static + Ord + Copy>(&self) -> Option<T> {
@@ -45,23 +52,20 @@ impl TerminalIn {
                 let downcast = terminal.as_any().downcast_ref::<TerminalOut<T>>();
 
                 match downcast {
-                    Some(x) => Some(*x.get_value()),
+                    Some(x) => Some(x.get_value()),
                     None => None,
                 }
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
     pub fn set_connector(&mut self, terminal: Arc<Mutex<dyn TTerminalOut>>) {
         self.connector = Some(terminal);
     }
-
-    
 }
 
 impl TTerminalIn for TerminalIn {
-
     fn get_connector_mut(&mut self) -> &Option<Arc<Mutex<dyn TTerminalOut>>> {
         &self.connector
     }
@@ -73,5 +77,4 @@ impl TTerminalIn for TerminalIn {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-
 }
