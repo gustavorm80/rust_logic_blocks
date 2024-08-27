@@ -1,20 +1,9 @@
-use std::{
-    borrow::BorrowMut,
-    fmt,
-    io::{self, Read, Write},
-    ops::DerefMut,
-    sync::{Arc, Mutex},
-    thread::{self, Scope},
-    time::Duration,
-};
 
-use block::{
-    constants::const_bool::BlockConstBool,
-    logic_ports::{and_port::AndPort, nor_port::NOrPort, not_port::NotPort, or_port::OrPort},
-    TBlock, TExecute,
-};
+use std::{sync::{Arc, Mutex}, thread, time::Duration};
+
+use block::{constants::const_bool::BlockConstBool, logic_ports::{and_port::AndPort, nor_port::NOrPort, not_port::NotPort}, TExecute};
 use terminal::{
-    terminal_in::{TTerminalIn, TerminalIn},
+    terminal_in::TerminalIn,
     terminal_out::TerminalOut,
 };
 
