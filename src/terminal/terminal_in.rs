@@ -19,7 +19,10 @@ pub trait TTerminalIn: Send {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+
 type TerminalInRef = Arc<Mutex<TerminalIn>>;
+type TTerminalInRef = Arc<Mutex<dyn TTerminalIn>>;
+
 
 #[derive(Clone)]
 pub struct TerminalIn {
@@ -29,14 +32,6 @@ pub struct TerminalIn {
 }
 
 impl TerminalIn {
-    // pub fn new(name: String) -> _TerminalIn {
-    //     _TerminalIn {
-    //         name,
-    //         connector: None,
-    //         uuid: Uuid::new_v4(),
-    //     }
-    // }
-
     pub fn new(name: String) -> TerminalInRef {
         Arc::new(Mutex::new(TerminalIn {
             name,
@@ -60,6 +55,20 @@ impl TerminalIn {
         }
     }
 
+    pub fn get_value_tterminal_in<T: 'static + Ord + Copy>(terminal_in: &TTerminalInRef, default: T) -> T {
+        let tlock = terminal_in.lock().unwrap();
+        let tdown = tlock.as_any().downcast_ref::<TerminalIn>();
+        match tdown {
+            Some(terminal) => {
+                match terminal.get_value() {
+                    Some(value) => value,
+                    None => default,
+                }
+            },
+            None => default,
+        }
+    }
+
     pub fn set_connector(&mut self, terminal: Arc<Mutex<dyn TTerminalOut>>) {
         self.connector = Some(terminal);
     }
@@ -78,3 +87,7 @@ impl TTerminalIn for TerminalIn {
         self
     }
 }
+
+
+
+

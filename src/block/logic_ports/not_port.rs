@@ -50,32 +50,15 @@ impl TExecute for NotPort {
     fn execute(&mut self) -> bool {
         let mut result = false;
 
-        {
-            let mut term = self.block.in_terminals[0].lock().unwrap();
-            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
-
-            result = match downcast {
-                Some(x) => match (*x).get_value::<bool>() {
-                    Some(val) => val,
-                    None => false,
-                },
-                None => false,
-            };
+        
+        if let Ok(in_terminal) = self.get_in_terminal_by_index(0) {
+            result = TerminalIn::get_value_tterminal_in::<bool>(&in_terminal, false);
         }
 
-        let mut term = (*self.out_not).lock().unwrap();
-        let mut downcast = term
-            .as_any_mut()
-            .downcast_mut::<TerminalOut<bool>>()
-            .unwrap();
-
-        let out_val = downcast.get_value();
-
-        result = !result;
-
-        if (result != out_val) {
-            downcast.set_value(result);
-            self.block.set_changed(true);
+        if let Ok(terminal) = self.get_out_terminal_by_index(0) {
+            if TerminalOut::<bool>::set_value_tterminal_if_diff(&terminal, !result) {
+                self.deref_mut().set_changed(true);
+            }
         }
 
         self.block.changed
@@ -83,14 +66,6 @@ impl TExecute for NotPort {
 
     fn is_changed(&self) -> &bool {
         &self.block.changed
-    }
-
-    fn get_block(&self) -> &Block {
-        &self.block
-    }
-
-    fn get_block_mut(&mut self) -> &mut Block {
-        &mut self.block
     }
 
     fn as_any(&self) -> &dyn Any {

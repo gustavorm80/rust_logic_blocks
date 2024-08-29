@@ -41,14 +41,6 @@ impl TExecute for BlockConstBool {
         &self.block.changed
     }
 
-    fn get_block(&self) -> &Block {
-        &self.block
-    }
-
-    fn get_block_mut(&mut self) -> &mut Block {
-        &mut self.block
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
