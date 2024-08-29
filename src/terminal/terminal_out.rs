@@ -8,17 +8,16 @@ use std::{
 
 use uuid::Uuid;
 
+
 pub trait TTerminalOut: Send {
     fn reset(&mut self);
+    fn is_new_value(&self) -> bool;
 
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub trait TReaderOut<T> {
-    fn read(&self) -> T;
-}
-
+pub type TTerminalOutRef = Arc<Mutex<dyn TTerminalOut>>;
 #[derive(Clone)]
 pub struct TerminalOut<T: Ord + Copy> {
     name: String,
@@ -47,6 +46,35 @@ impl<T: 'static + Ord + Copy> TerminalOut<T> {
         self.value
     }
 
+    pub fn get_value_tterminal(terminal_out: &TTerminalOutRef, default: T) -> T {
+        let tlock = terminal_out.lock().unwrap();
+        let tdown = tlock.as_any().downcast_ref::<TerminalOut<T>>();
+        match tdown {
+            Some(terminal) => {
+                terminal.get_value()
+            },
+            None => default,
+        }
+    }
+
+    pub fn set_value_tterminal_if_diff(terminal_out: & TTerminalOutRef, new_value: T) -> bool {
+        let mut tlock = terminal_out.lock().unwrap();
+        let mut tdown = tlock.as_any_mut().downcast_mut::<TerminalOut<T>>();
+        match tdown {
+            Some(terminal) => {
+                let current = terminal.get_value();
+                if current != new_value {
+                    terminal.set_value(new_value);
+                    true
+                }
+                else {
+                    false
+                }
+            },
+            None => false
+        }
+    }
+
     pub fn set_value(&mut self, value: T) {
         if (self.value != value) {
             self.value = value;
@@ -69,6 +97,10 @@ impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
         self.reset();
     }
 
+    fn is_new_value(&self) -> bool {
+        self.is_new_value
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -78,8 +110,4 @@ impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
     }
 }
 
-impl<T: 'static + Ord + Copy + Send> TReaderOut<T> for TerminalOut<T> {
-    fn read(&self) -> T {
-        self.get_value()
-    }
-}
+

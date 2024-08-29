@@ -53,30 +53,13 @@ impl TExecute for OrPort {
         let mut result = false;
 
         for in_terminal in self.block.in_terminals.iter() {
-            let mut term = (*in_terminal).lock().unwrap();
-
-            let mut downcast = term.as_any_mut().downcast_mut::<TerminalIn>();
-
-            result |= match downcast {
-                Some(x) => match (*x).get_value::<bool>() {
-                    Some(val) => val,
-                    None => false,
-                },
-                None => false,
-            };
+            result |= TerminalIn::get_value_tterminal_in::<bool>(&in_terminal, false);
         }
 
-        let mut term = (*self.out_or).lock().unwrap();
-        let downcast = term
-            .as_any_mut()
-            .downcast_mut::<TerminalOut<bool>>()
-            .unwrap();
-
-        let out_val = downcast.get_value();
-
-        if (result != out_val) {
-            downcast.set_value(result);
-            self.block.set_changed(true);
+        if let Ok(terminal) = self.get_out_terminal_by_index(0) {
+            if TerminalOut::<bool>::set_value_tterminal_if_diff(&terminal, result) {
+                self.deref_mut().set_changed(true);
+            }
         }
 
         self.block.changed
@@ -84,14 +67,6 @@ impl TExecute for OrPort {
 
     fn is_changed(&self) -> &bool {
         &self.block.changed
-    }
-
-    fn get_block(&self) -> &Block {
-        &self.block
-    }
-
-    fn get_block_mut(&mut self) -> &mut Block {
-        &mut self.block
     }
 
     fn as_any(&self) -> &dyn Any {

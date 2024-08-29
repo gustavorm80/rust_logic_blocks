@@ -10,19 +10,18 @@ use crate::terminal::{
 
 pub mod constants;
 pub mod logic_ports;
+pub mod general;
 
 pub trait TExecute: Send {
     fn execute(&mut self) -> bool;
     fn is_changed(&self) -> &bool;
 
-    fn get_block(&self) -> &Block;
-
-    fn get_block_mut(&mut self) -> &mut Block;
-
     fn as_any(&self) -> &dyn Any;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
+
+pub type Executer = Arc<Mutex<Vec<Box<dyn TExecute>>>>;
 
 pub trait TBlock {
     fn connect_out_to_in<'a>(
