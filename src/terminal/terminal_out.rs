@@ -12,6 +12,8 @@ use uuid::Uuid;
 pub trait TTerminalOut: Send {
     fn reset(&mut self);
     fn is_new_value(&self) -> bool;
+    fn get_name(&self) -> &str;
+    fn set_name(&mut self, name: String);
 
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -96,6 +98,15 @@ impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
     fn reset(&mut self) {
         self.reset();
     }
+
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
 
     fn is_new_value(&self) -> bool {
         self.is_new_value

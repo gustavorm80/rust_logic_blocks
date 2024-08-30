@@ -70,7 +70,7 @@ impl GenericBlock {
 
         for block in blocks_lock.iter_mut() {
             block.execute();
-        };
+        }
     }
 }
 
@@ -95,10 +95,32 @@ impl TExecute for GenericBlock {
         self.block.changed
     }
 
+    fn is_changed(&self) -> bool {
+        self.block.changed
+    }
 
+    fn get_name(&self) -> &str {
+        self.deref().get_name()
+    }
 
-    fn is_changed(&self) -> &bool {
-        &self.block.changed
+    fn reset(&mut self) {
+        self.block.reset();
+
+        let mut blocks = self.blocks.lock().unwrap();
+        for block in blocks.iter_mut() {
+            block.reset();
+        }
+
+    }
+
+    fn new_pass(&mut self){
+        self.block.new_pass();
+
+        
+        let mut blocks = self.blocks.lock().unwrap();
+        for block in blocks.iter_mut() {
+            block.new_pass();
+        }
     }
 
     fn as_any(&self) -> &dyn Any {

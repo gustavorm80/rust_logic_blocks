@@ -37,8 +37,20 @@ impl TExecute for BlockConstBool {
         self.block.changed
     }
 
-    fn is_changed(&self) -> &bool {
-        &self.block.changed
+    fn is_changed(&self) -> bool {
+        self.block.changed
+    }
+
+    fn get_name(&self) -> &str {
+        self.deref().get_name()
+    }
+
+    fn reset(&mut self) {
+        self.block.reset();
+    }
+
+    fn new_pass(&mut self){
+        self.block.new_pass();
     }
 
     fn as_any(&self) -> &dyn Any {

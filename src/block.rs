@@ -11,10 +11,15 @@ use crate::terminal::{
 pub mod constants;
 pub mod logic_ports;
 pub mod general;
+pub mod state_ports;
 
 pub trait TExecute: Send {
     fn execute(&mut self) -> bool;
-    fn is_changed(&self) -> &bool;
+    fn is_changed(&self) -> bool;
+    fn get_name(&self) -> &str;
+
+    fn reset(&mut self);
+    fn new_pass(&mut self);
 
     fn as_any(&self) -> &dyn Any;
 
@@ -172,5 +177,20 @@ impl Block {
             tlock.reset();
         }
     }
+
+    pub fn reset_texecute(block: &mut dyn TExecute) {
+        let block_cast = block.as_any_mut().downcast_mut::<Block>();
+        if let Some(block) = block_cast {
+            block.reset();
+        }
+    }
+
+    pub fn new_pass_texecute(block: &mut dyn TExecute) {
+        let block_cast = block.as_any_mut().downcast_mut::<Block>();
+        if let Some(block) = block_cast {
+            block.new_pass();
+        }
+    }
+
 
 }

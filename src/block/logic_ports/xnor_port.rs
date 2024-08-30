@@ -71,12 +71,24 @@ impl TExecute for XNOrPort {
         self.block.changed
     }
 
-    fn is_changed(&self) -> &bool {
-        &self.block.changed
+    fn is_changed(&self) -> bool {
+        self.block.changed
+    }
+
+    fn get_name(&self) -> &str {
+        self.get_name()
     }
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn reset(&mut self) {
+        self.block.reset();
+    }
+
+    fn new_pass(&mut self){
+        self.block.new_pass();
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

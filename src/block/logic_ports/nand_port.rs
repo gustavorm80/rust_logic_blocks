@@ -46,6 +46,12 @@ impl NAndPort {
     ) -> Result<&T, &str> {
         self.block.get_out_terminal_value_by_index(out_index)
     }
+
+    pub fn add_new_in_terminal(&mut self) {
+        let in_a: Arc<Mutex<dyn TTerminalIn>> = TerminalIn::new("In".to_string());
+        self.add_in_terminal(in_a);
+    }
+    
 }
 
 impl TExecute for NAndPort {
@@ -65,8 +71,20 @@ impl TExecute for NAndPort {
         self.block.changed
     }
 
-    fn is_changed(&self) -> &bool {
-        &self.block.changed
+    fn is_changed(&self) -> bool {
+        self.block.changed
+    }
+
+    fn get_name(&self) -> &str {
+        self.get_name()
+    }
+
+    fn reset(&mut self) {
+        self.block.reset();
+    }
+
+    fn new_pass(&mut self){
+        self.block.new_pass();
     }
 
     fn as_any(&self) -> &dyn Any {
