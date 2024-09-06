@@ -51,7 +51,6 @@ impl NAndPort {
         let in_a: Arc<Mutex<dyn TTerminalIn>> = TerminalIn::new("In".to_string());
         self.add_in_terminal(in_a);
     }
-    
 }
 
 impl TExecute for NAndPort {
@@ -59,6 +58,18 @@ impl TExecute for NAndPort {
         let mut result = true;
 
         for in_terminal in self.block.in_terminals.iter() {
+            // if self.get_name() == "IN NAND 1" {
+            //     let mut name = "".to_string();
+            //     {
+            //         let lk = (*in_terminal).lock().unwrap();
+            //         name = lk.get_name().to_string();
+            //     }
+            //     println!(
+            //         "{}: {}",
+            //         name,
+            //         TerminalIn::get_value_tterminal_in::<bool>(&in_terminal, false)
+            //     )
+            // }
             result &= TerminalIn::get_value_tterminal_in::<bool>(&in_terminal, false);
         }
 
@@ -83,7 +94,7 @@ impl TExecute for NAndPort {
         self.block.reset();
     }
 
-    fn new_pass(&mut self){
+    fn new_pass(&mut self) {
         self.block.new_pass();
     }
 
@@ -93,6 +104,10 @@ impl TExecute for NAndPort {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn as_block(&self) -> &dyn Any {
+        &self.block
     }
 }
 

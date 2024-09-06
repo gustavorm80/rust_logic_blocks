@@ -7,12 +7,16 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use core::fmt::Debug;
+
 use uuid::Uuid;
 
 use super::terminal_out::{TTerminalOut, TerminalOut};
 
 pub trait TTerminalIn: Send {
     fn get_connector_mut(&mut self) -> &Option<Arc<Mutex<dyn TTerminalOut>>>;
+    fn get_name(&self) -> &str;
+    fn set_name(&mut self,name: String);
 
     fn as_any(&self) -> &dyn Any;
 
@@ -79,6 +83,14 @@ impl TTerminalIn for TerminalIn {
         &self.connector
     }
 
+    fn set_name(&mut self, name: String){
+        self.name = name;
+    }
+
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -88,6 +100,10 @@ impl TTerminalIn for TerminalIn {
     }
 }
 
-
+impl Debug for dyn TTerminalIn {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.get_name())
+    }
+}
 
 

@@ -16,12 +16,12 @@ use crate::{
 
 pub enum EExposeType {
     InTerminal = 0,
-    OutTerminal
+    OutTerminal,
 }
 
 pub struct InOutExposes {
     block: Block,
-    expose_type: EExposeType
+    expose_type: EExposeType,
 }
 
 impl InOutExposes {
@@ -74,7 +74,7 @@ impl TExecute for InOutExposes {
         self.block.reset();
     }
 
-    fn new_pass(&mut self){
+    fn new_pass(&mut self) {
         self.block.new_pass();
     }
 
@@ -84,6 +84,10 @@ impl TExecute for InOutExposes {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn as_block(&self) -> &dyn Any {
+        &self.block
     }
 }
 

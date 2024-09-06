@@ -3,14 +3,16 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use core::fmt::Debug;
+
 use crate::terminal::{
     terminal_in::{TTerminalIn, TerminalIn},
     terminal_out::{TTerminalOut, TerminalOut},
 };
 
 pub mod constants;
-pub mod logic_ports;
 pub mod general;
+pub mod logic_ports;
 pub mod state_ports;
 
 pub trait TExecute: Send {
@@ -24,6 +26,8 @@ pub trait TExecute: Send {
     fn as_any(&self) -> &dyn Any;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
+
+    fn as_block(&self) -> &dyn Any;
 }
 
 pub type Executer = Arc<Mutex<Vec<Box<dyn TExecute>>>>;
@@ -37,6 +41,7 @@ pub trait TBlock {
     ) -> Result<(), &str>;
 }
 
+#[derive(Debug)]
 pub struct Block {
     name: String,
     changed: bool,
@@ -71,6 +76,19 @@ impl Block {
         } else {
             Ok(Arc::clone(&self.out_terminals[out_index]))
         }
+    }
+
+    pub fn get_out_terminal_by_name(&self, name: String) -> Option<Arc<Mutex<dyn TTerminalOut>>> {
+        let mut result: Option<Arc<Mutex<dyn TTerminalOut>>> = None;
+
+        for t in self.out_terminals.iter() {
+            if *t.lock().unwrap().get_name() == name {
+                result = Some(Arc::clone(&t));
+                break;
+            }
+        }
+
+        result
     }
 
     pub fn get_in_terminals_size(&self) -> usize {
@@ -111,6 +129,19 @@ impl Block {
         }
     }
 
+    pub fn get_in_terminal_by_name(&self, name: String) -> Option<Arc<Mutex<dyn TTerminalIn>>> {
+        let mut result: Option<Arc<Mutex<dyn TTerminalIn>>> = None;
+
+        for t in self.in_terminals.iter() {
+            if *t.lock().unwrap().get_name() == name {
+                result = Some(Arc::clone(&t));
+                break;
+            }
+        }
+
+        result
+    }
+
     pub fn set_changed(&mut self, changed: bool) {
         self.changed = changed;
     }
@@ -148,6 +179,30 @@ impl Block {
         }
     }
 
+    pub fn connect_to_in_terminal_by_name<'a, T: Ord + Copy + 'static>(
+        &mut self,
+        in_name: String,
+        out_terminal: Arc<Mutex<dyn TTerminalOut>>,
+    ) -> Result<(), &str> {
+        let mut in_terminal = self.get_in_terminal_by_name(in_name);
+
+        match in_terminal {
+            Some(in_terminal) => {
+                let mut in_lock = in_terminal.lock().unwrap();
+                let downcasted = in_lock.as_any_mut().downcast_mut::<TerminalIn>();
+
+                match downcasted {
+                    Some(term) => {
+                        term.set_connector(out_terminal);
+                        Ok(())
+                    }
+                    None => Err("Terminal type is not correct"),
+                }
+            }
+            None => Err("In terminal \"{in_name}\" not found."),
+        }
+    }
+
     pub fn connect_out_to_in<'a, T: Ord + Copy + 'static>(
         &'a mut self,
         out_index: usize,
@@ -164,6 +219,25 @@ impl Block {
                 }
             }
             Err(err) => Err(err),
+        }
+    }
+
+    pub fn connect_out_to_in_by_name<'a, T: Ord + Copy + 'static>(
+        &'a mut self,
+        out_name: String,
+        to_block: &'a mut Block,
+        to_in_name: String,
+    ) -> Result<(), &str> {
+        let out_terminal = self.get_out_terminal_by_name(out_name);
+
+        match out_terminal {
+            Some(term) => {
+                match to_block.connect_to_in_terminal_by_name::<T>(to_in_name, Arc::clone(&term)) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(err),
+                }
+            }
+            None => Err("Out terminal \"{out_name}\" not found."),
         }
     }
 
@@ -192,5 +266,13 @@ impl Block {
         }
     }
 
+    pub fn get_in_terminals(&self) -> &Vec<Arc<Mutex<dyn TTerminalIn>>> {
+        &self.in_terminals
+    }
+}
 
+impl Debug for dyn TExecute {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "{}", self.get_name())
+    }
 }

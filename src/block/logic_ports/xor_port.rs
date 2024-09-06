@@ -94,6 +94,11 @@ impl TExecute for XOrPort {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
+
+    fn as_block(&self) -> &dyn Any {
+        &self.block
+    }
+    
 }
 
 impl Deref for XOrPort {

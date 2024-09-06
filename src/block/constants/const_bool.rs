@@ -2,7 +2,7 @@
 
 use std::{any::Any, default, ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
 
-use crate::{block::{Block, TExecute}, terminal::terminal_out::{TTerminalOut, TerminalOut}, };
+use crate::{block::{Block, TExecute}, terminal::terminal_out::{self, TTerminalOut, TerminalOut}, };
 
 
 pub struct BlockConstBool {
@@ -30,6 +30,19 @@ impl BlockConstBool {
     pub fn get_out_value_by_index<T: 'static + Ord + Copy>(&mut self, out_index: usize) -> Result<&T,&str> {
         self.block.get_out_terminal_value_by_index(out_index)
     }
+
+    pub fn toogle_output(&mut self) {
+        // let value = self.get_out_value_by_index::<bool>(0).unwrap();
+        if let Ok(terminal) = self.get_out_terminal_by_index(0) {
+            let mut lt = terminal.lock().unwrap();
+            let mut dc = lt.as_any_mut().downcast_mut::<TerminalOut<bool>>();
+            if let Some(t) = dc {
+                t.set_value(!t.get_value());
+            }
+
+        }
+
+    }
 }
 
 impl TExecute for BlockConstBool {
@@ -46,7 +59,7 @@ impl TExecute for BlockConstBool {
     }
 
     fn reset(&mut self) {
-        self.block.reset();
+        // self.block.reset();
     }
 
     fn new_pass(&mut self){
@@ -60,7 +73,11 @@ impl TExecute for BlockConstBool {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    
+
+    fn as_block(&self) -> &dyn Any {
+        &self.block
+    }
+   
 }
 
 impl Deref for BlockConstBool {

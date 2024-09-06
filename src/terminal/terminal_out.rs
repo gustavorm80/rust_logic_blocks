@@ -6,6 +6,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use core::fmt::Debug;
+
 use uuid::Uuid;
 
 
@@ -60,7 +62,7 @@ impl<T: 'static + Ord + Copy> TerminalOut<T> {
     }
 
     pub fn set_value_tterminal_if_diff(terminal_out: & TTerminalOutRef, new_value: T) -> bool {
-        let mut tlock = terminal_out.lock().unwrap();
+        let mut tlock = (*terminal_out).lock().unwrap();
         let mut tdown = tlock.as_any_mut().downcast_mut::<TerminalOut<T>>();
         match tdown {
             Some(terminal) => {
@@ -92,7 +94,16 @@ impl<T: 'static + Ord + Copy> TerminalOut<T> {
         self.is_new_value = false;
         self.last_value = self.value;
     }
+
+    // fn into_bool<V: Into<bool>>(input: V) -> bool {
+    //     input.into()
+    // }
+
+    // fn into_bool_mut<V: Into<bool>>(input: mut V) -> bool {
+    //     input.into()
+    // }
 }
+
 
 impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
     fn reset(&mut self) {
@@ -122,3 +133,8 @@ impl<T: 'static + Ord + Copy + Send> TTerminalOut for TerminalOut<T> {
 }
 
 
+impl Debug for dyn TTerminalOut {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.get_name())
+    }
+}

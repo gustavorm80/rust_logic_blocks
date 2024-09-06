@@ -21,6 +21,18 @@ pub fn new() -> GenericBlock {
     let mut not_q =
     Box::new(InOutExposes::new(crate::block::general::in_out_exposes::EExposeType::OutTerminal));
 
+    nand1.set_name("IN NAND 1");
+    nand2.set_name("IN NAND 2");
+    nand3.set_name("NAND Q");
+    nand4.set_name("NAND !Q");
+
+    clk.set_name("EXP. CLK");
+    set.set_name("SET");
+    reset.set_name("RST");
+
+    q.set_name("Block Q");
+    not_q.set_name("Block Not Q");
+
     nand1.add_new_in_terminal();
     nand2.add_new_in_terminal();
 
@@ -48,6 +60,19 @@ pub fn new() -> GenericBlock {
 
         let mut to = not_q.out_terminals[0].lock().unwrap();
         to.set_name("!Q".to_string());
+
+        let mut to = clk.in_terminals[0].lock().unwrap();
+        to.set_name("CLK".to_string());
+
+        let mut to = clk.out_terminals[0].lock().unwrap();
+        to.set_name("OUT CLK".to_string());
+
+        
+        let mut to = set.in_terminals[0].lock().unwrap();
+        to.set_name("SET".to_string());        
+
+        let mut to = reset.in_terminals[0].lock().unwrap();
+        to.set_name("RST".to_string());
     }
 
     let vectors: Vec<Box<dyn TExecute>> = vec![nand1, nand2, nand3, nand4, set, clk, reset, q, not_q];

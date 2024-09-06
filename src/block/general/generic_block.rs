@@ -16,6 +16,7 @@ use crate::{
 
 use super::in_out_exposes::{self, InOutExposes};
 
+#[derive(Debug)]
 pub struct GenericBlock {
     block: Block,
     blocks: Executer,
@@ -65,31 +66,28 @@ impl GenericBlock {
         self.block.get_out_terminal_value_by_index(out_index)
     }
 
-    fn execute_blocks(&mut self) {
+    fn execute_blocks(&mut self) -> bool {
         let mut blocks_lock = self.blocks.lock().unwrap();
+        let mut executed = false;
 
         for block in blocks_lock.iter_mut() {
-            block.execute();
+            executed |= block.execute();
         }
+
+        executed
+    }
+
+    pub fn get_blocks(&self) -> Executer {
+        Arc::clone(&self.blocks)
     }
 }
 
 impl TExecute for GenericBlock {
     fn execute(&mut self) -> bool {
-        let mut changed = false;
+        let changed = self.execute_blocks();
 
-        self.execute_blocks();
-
-        for terminal in self.deref_mut().out_terminals.iter() {
-            let locked = (*terminal).lock().unwrap();
-            if locked.is_new_value() {
-                changed = true;
-                break;
-            }
-        }
-
-        if changed {
-            self.set_changed(true);
+        if (changed) {
+            self.set_changed(changed);
         }
 
         self.block.changed
@@ -110,13 +108,11 @@ impl TExecute for GenericBlock {
         for block in blocks.iter_mut() {
             block.reset();
         }
-
     }
 
-    fn new_pass(&mut self){
+    fn new_pass(&mut self) {
         self.block.new_pass();
 
-        
         let mut blocks = self.blocks.lock().unwrap();
         for block in blocks.iter_mut() {
             block.new_pass();
@@ -129,6 +125,10 @@ impl TExecute for GenericBlock {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn as_block(&self) -> &dyn Any {
+        &self.block
     }
 }
 
