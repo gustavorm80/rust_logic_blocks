@@ -75,7 +75,7 @@ pub fn new() -> GenericBlock {
         to.set_name("RST".to_string());
     }
 
-    let vectors: Vec<Box<dyn TExecute>> = vec![nand1, nand2, nand3, nand4, set, clk, reset, q, not_q];
+    let vectors: Vec<Box<dyn TExecute>> = vec![nand1, nand3, nand2, nand4, set, clk, reset, q, not_q];
     let blocks = Arc::new(Mutex::new(vectors));
 
     let mut block = GenericBlock::new(blocks);

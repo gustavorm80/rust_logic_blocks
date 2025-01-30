@@ -136,7 +136,10 @@ fn main() {
                     let lock_blocks = blocks.lock().unwrap();
                     for ib in lock_blocks.iter() {
                         // println!("{}", ib.get_name());
-                        if ib.get_name() == "IN NAND 1" || ib.get_name() == "IN NAND 2"  {
+                        if ib.get_name() == "IN NAND 1" || 
+                            ib.get_name() == "IN NAND 2" ||
+                            ib.get_name() == "NAND Q" ||
+                            ib.get_name() == "NAND !Q" {
                             print(&ib);
                         }
 
